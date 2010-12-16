@@ -1,0 +1,111 @@
+#!/usr/bin/env ruby
+
+############################################################
+# Copyright (c) 2010, iGenesis Ltda.                       #
+# Author: Gustavo Machado C. Gama <gustavo.gama@gmail.com> #
+############################################################
+
+require 'optparse'
+require 'irb'
+require 'rack'
+require 'json'
+require 'google-reader/auth'
+require 'google-reader/client'
+require 'google-reader/user'
+
+module Google; module Reader
+
+class Console
+    include Google::Reader::Auth
+    include Google::Reader::Client
+
+    WEB_SERVER_PORT = 8088
+
+    def initialize(request_token_file, access_token_file)
+        @request_token_file = request_token_file
+        @access_token_file  = access_token_file
+
+        if File.readable?(@request_token_file)
+            token, secret = IO.read(@request_token_file).split(/\r?\n/)
+            @request_token = ::OAuth::RequestToken.new(consumer, token, secret) if token && secret
+        end
+        if File.readable?(@access_token_file)
+            token, secret = IO.read(@access_token_file).split(/\r?\n/)
+            @access_token = ::OAuth::AccessToken.new(consumer, token, secret) if token && secret
+        end
+
+        # use the net::http of the AccessToken as a request proxy
+        self.request_proxy = access_token
+    end
+
+    def request_token
+        @request_token ||= begin
+            token = super
+            File.open(@request_token_file, 'w') do |file|
+                file.write "#{token.token}\n#{token.secret}\n"
+            end
+            token
+        end
+    end
+
+    def access_token
+        @access_token ||= begin
+            puts "please access #{request_token.authorize_url} using your web browser."
+            Rack::Handler.default.run(self, :Port => WEB_SERVER_PORT)
+
+            token = super
+            File.open(@access_token_file, 'w') do |file|
+                file.write "#{token.token}\n#{token.secret}\n"
+            end
+            token
+        end
+    end
+
+    def google_reader_authorize_callback
+        "http://localhost:#{WEB_SERVER_PORT}/authorize"
+    end
+
+    #############################################################
+    # Rack Handler (automatically handles authorization callback)
+    #############################################################
+
+    # implement the Rack interface to handle the 'authorize callback'
+    def call(env)
+        if env['REQUEST_URI'].start_with?(self.class.google_reader_authorize_callback)
+            extract_verifier(env['REQUEST_URI'])
+            Process.kill('INT', 0) # stop the rack server
+            [200, {'Content-Type' => 'text/plain'}, ["Request token accepted (#{@oauth_token}/#{@oauth_verifier}). Proceeding.\n"]]
+        else
+            [404, {'Content-Type' => 'text/plain'}, ['']]
+        end
+    end
+end
+
+end; end # module Google::Reader
+
+
+############################ MAIN ###############################
+
+# default token files
+request_token_file = File.join(ENV['HOME'], '.cache', 'google', 'reader', 'oauth-request-token')
+access_token_file  = File.join(ENV['HOME'], '.cache', 'google', 'reader', 'oauth-access-token')
+
+OptionParser.new do |opts|
+    opts.banner = "Usage: #$0 [-r <request-token-file>][-a <access-token-file>]\n"
+    opts.on '-r', '--request-token <request-token-file>', 'file with oauth request token' do |f| request_token_file = f; end
+    opts.on '-a', '--access-token  <access-token-file> ', 'file with oauth access token'  do |f| access_token_file  = f; end
+end.parse!
+
+@console = Google::Reader::Console.new(request_token_file, access_token_file)
+@user    = @console.user
+puts <<EOS
+
+--------------- Google Reader interactive console --------------
+The base client is available through the instance variable '@console'.
+The authenticated user may be retrieved though '@console.user':
+
+    irb> puts @console.user.subscriptions.inspect
+
+EOS
+require 'irb'
+IRB.start

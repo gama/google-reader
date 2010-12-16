@@ -1,0 +1,4 @@
+* Implement write methods (only read-only API is currently available)
+* Make Google::Reader::ItemList implement Enumerable (or inherit from Array)
+* (?) Ditch the Hashie::Mash interface and use instance_eval to define the accessors
+* Tests
