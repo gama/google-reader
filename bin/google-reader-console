@@ -21,6 +21,8 @@ class Console
 
     WEB_SERVER_PORT = 8088
 
+    @@rack_handler = Rack::Handler::default
+
     def initialize(request_token_file, access_token_file)
         @request_token_file = request_token_file
         @access_token_file  = access_token_file
@@ -51,7 +53,10 @@ class Console
     def access_token
         @access_token ||= begin
             puts "please access #{request_token.authorize_url} using your web browser."
-            Rack::Handler.default.run(self, :Port => WEB_SERVER_PORT)
+            if @@rack_handler.respond_to?(:shutdown)
+                ['INT', 'TERM'].each{|signal| trap(signal) { @@rack_handler.shutdown } }
+            end
+            @@rack_handler.run(self, :Port => WEB_SERVER_PORT)
 
             token = super
             File.open(@access_token_file, 'w') do |file|
@@ -73,7 +78,14 @@ class Console
     def call(env)
         if env['REQUEST_URI'].start_with?(self.class.google_reader_authorize_callback)
             extract_verifier(env['REQUEST_URI'])
-            Process.kill('INT', 0) # stop the rack server
+
+            # stop the rack server
+            if @@rack_handler.respond_to?(:shutdown) # rack >= 1.2
+                @@rack_handler.shutdown
+            else
+                Process.kill('INT', 0)
+            end
+
             [200, {'Content-Type' => 'text/plain'}, ["Request token accepted (#{@oauth_token}/#{@oauth_verifier}). Proceeding.\n"]]
         else
             [404, {'Content-Type' => 'text/plain'}, ['']]
