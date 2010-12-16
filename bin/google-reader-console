@@ -76,7 +76,7 @@ class Console
 
     # implement the Rack interface to handle the 'authorize callback'
     def call(env)
-        if env['REQUEST_URI'].start_with?(self.class.google_reader_authorize_callback)
+        if env['REQUEST_URI'].start_with?(self.google_reader_authorize_callback)
             extract_verifier(env['REQUEST_URI'])
 
             # stop the rack server
