@@ -47,11 +47,12 @@ class ItemList
 
     # fetch all available items
     def all
+        end_time = (Time.now - 30.days).to_i
         all_items = Array.new
         cur_items = self
         begin
             all_items += cur_items.items
-            cur_items = cur_items.next
+            cur_items = cur_items.next(:count => 200, :start_time => end_time)
         end until cur_items.nil?
         all_items
     end
