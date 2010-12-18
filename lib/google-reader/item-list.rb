@@ -40,7 +40,7 @@ class ItemList
     # fetch next batch of items, if available
     def next(params = {})
         next? or return nil
-        resp = @request_proxy.get(merge_query_string(@url, {:continuation => @continuation}))
+        resp = @request_proxy.get(merge_query_string(@url, params.merge({:continuation => @continuation})))
         self.class.new(@request_proxy, resp.body)
     end
     alias :more :next
