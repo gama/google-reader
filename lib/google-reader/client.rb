@@ -40,7 +40,7 @@ module Client
         resp = request_proxy.get('/reader/api/0/friend/list?output=json')
         raise "unable to retrieve the list of friends" unless resp.code_type == Net::HTTPOK
         JSON.parse(resp.body)['friends'].collect do |friend|
-            ((friend['flags'] & (1 << User::IS_ME)) > 0) ? CurrentUser.new(request_proxy, friend) : User.new(request_proxy, friend)
+            ((friend['flags'] & (1 << User::IS_ME)) > 0) ? CurrentUser.new(self, friend) : User.new(self, friend)
         end
     end
 end

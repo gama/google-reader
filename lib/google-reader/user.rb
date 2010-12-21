@@ -43,8 +43,8 @@ class User < UnderscoreMash
         const_set(flag, index)
     end
 
-    def initialize(req_proxy, hash = nil)
-        @request_proxy = req_proxy
+    def initialize(cli, hash = nil)
+        @client = cli
         super(hash, default, &blk)
         friends = Array.new
     end

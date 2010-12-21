@@ -11,15 +11,17 @@ module Google; module Reader;
 class ItemList
     attr_reader :items
 
-    def initialize(req_proxy, json_str = nil)
-        @request_proxy = req_proxy
+    def initialize(cli, json_str = nil)
+        @client = cli
         if json_str
             json = JSON.parse(json_str)
             %w(author title updated direction continuation).each do |key|
                 instance_variable_set(('@'+key).to_sym, json[key])
             end
             @url   = json['self'].first['href']
-            @items = json['items'].collect{|i| Google::Reader::Item.new(i)}
+            @items = json['items'].collect do |item_mash|
+                Google::Reader::Item.new(item_mash).tap{|i| i.client = @client}
+            end
         else
             @items = Array.new
         end
@@ -40,8 +42,8 @@ class ItemList
     # fetch next batch of items, if available
     def next(params = {})
         next? or return nil
-        resp = @request_proxy.get(merge_query_string(@url, params.merge({:continuation => @continuation})))
-        self.class.new(@request_proxy, resp.body)
+        resp = @client.get(merge_query_string(@url, params.merge({:continuation => @continuation})))
+        self.class.new(@client, resp.body)
     end
     alias :more :next
 
