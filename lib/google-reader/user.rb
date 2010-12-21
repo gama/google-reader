@@ -122,6 +122,17 @@ class CurrentUser < User
         subscriptions
     end
 
+    # retrieve the list of tags/folders
+    def tags
+        @tags ||= begin
+            resp = @client.access_token.get('/reader/api/0/tag/list?output=json')
+            raise "unable to retrieve the list of tags for user #{user_id}" unless resp.code_type == Net::HTTPOK
+            JSON.parse(resp.body)['tags'].collect do |hash|
+                Google::Reader::Tag.new(hash.merge({:client => @client}))
+            end
+        end
+    end
+
     # define 'list items' methods filtered by state; also, add an bang (!)
     # version of each *_items method, that bypasses the cache
     # and forces a new request

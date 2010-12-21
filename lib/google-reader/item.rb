@@ -10,44 +10,36 @@ module Google; module Reader;
 class Item < UnderscoreMash
     attr_accessor :client
 
-    module State
-        Read       = 'state/com.google/read'
-        Starred    = 'state/com.google/starred'
-        Shared     = 'state/com.google/broadcast'
-        Broadcast  = 'state/com.google/broadcast'
-        KeptUnread = 'state/com.google/kept-unread'
-    end
-
     def mark_as_read
-        add_tag("user/#{client.user.user_id}/#{State::Read}")
+        add_tag("user/#{client.user.user_id}/#{Tag::Read}")
     end
 
     def mark_as_unread
-        remove_tag("user/#{client.user.user_id}/#{State::Read}")
+        remove_tag("user/#{client.user.user_id}/#{Tag::Read}")
     end
 
     def add_star
-        add_tag("user/#{client.user.user_id}/#{State::Starred}")
+        add_tag("user/#{client.user.user_id}/#{Tag::Starred}")
     end
 
     def remove_star
-        remove_tag("user/#{client.user.user_id}/#{State::Starred}")
+        remove_tag("user/#{client.user.user_id}/#{Tag::Starred}")
     end
 
     def share
-        add_tag("user/#{client.user.user_id}/#{State::Shared}")
+        add_tag("user/#{client.user.user_id}/#{Tag::Shared}")
     end
 
     def unshare
-        remove_tag("user/#{client.user.user_id}/#{State::Shared}")
+        remove_tag("user/#{client.user.user_id}/#{Tag::Shared}")
     end
 
     def keep_unread
-        add_tag("user/#{client.user.user_id}/#{State::KeptUnread}")
+        add_tag("user/#{client.user.user_id}/#{Tag::KeptUnread}")
     end
 
     def keep_read
-        remove_tag("user/#{client.user.user_id}/#{State::KeptUnread}")
+        remove_tag("user/#{client.user.user_id}/#{Tag::KeptUnread}")
     end
     alias :unkeep_unread :keep_read
 
@@ -66,7 +58,7 @@ class Item < UnderscoreMash
             'i'  => id,          # entry
             'r'  => tag,         # label/state to remove
             'ac' => 'edit',      # action (only known value: edit)
-            'T'  => client.token # token
+            'T'  => client.token # the write-access token
         }
         client.access_token.post('/reader/api/0/edit-tag', params)
     end
