@@ -72,23 +72,33 @@ class User < UnderscoreMash
         user_ids.first
     end
 
-    # returns the list of broadcast, or shared items
-    def broadcast_items
-        @broadcast_items ||= filtered_items_list('broadcast')
-    end
-    alias :shared_items :broadcast_items
-
     protected
+
+    def self.define_item_list_method(prefix)
+        class_eval <<EOS
+    def #{prefix}_items(params = {})
+        @#{prefix}_items ||= filtered_items_list('#{prefix.gsub(/_/, '-')}', params)
+    end
+
+    def #{prefix}_items!(params = {})
+        @#{prefix}_items = nil
+        #{prefix}_items(params)
+    end
+EOS
+    end
 
     # retrieve the a list of items from a given user, using a given filter
     def filtered_items_list(filter, params = {})
-        begin
-            resp = @request_proxy.get(ItemList.merge_query_string("/reader/api/0/stream/contents/user/#{user_id}/state/com.google/#{filter}?output=json", params))
-
-            raise "unable to retrieve the list of #{filter} items for user #{user_id}" unless resp.code_type == Net::HTTPOK
-            Google::Reader::ItemList.new(@request_proxy, resp.body)
-        end
+        resp = @client.access_token.get(ItemList.merge_query_string("/reader/api/0/stream/contents/user/#{user_id}/state/com.google/#{filter}?output=json", params))
+        raise "unable to retrieve the list of #{filter} items for user #{user_id}" unless resp.code_type == Net::HTTPOK
+        Google::Reader::ItemList.new(@client, resp.body)
     end
+
+    public
+
+    define_item_list_method('broadcast')
+    alias :shared_items  :broadcast_items
+    alias :shared_items! :broadcast_items!
 end
 
 class CurrentUser < User
@@ -97,7 +107,7 @@ class CurrentUser < User
     # retrieve the list of subscriptions/feeds
     def subscriptions
         @subscriptions ||= begin
-            resp = @request_proxy.get('/reader/api/0/subscription/list?output=json')
+            resp = @client.access_token.get('/reader/api/0/subscription/list?output=json')
             raise "unable to retrieve the list of subscription for user #{user_id}" unless resp.code_type == Net::HTTPOK
             JSON.parse(resp.body)['subscriptions'].collect do |f|
                 Google::Reader::Subscription.new(f)
@@ -105,64 +115,56 @@ class CurrentUser < User
         end
     end
 
-    # returns the list with all items
-    def all_items(params = {})
-        @all_items ||= filtered_items_list('reading-list', params)
+    # define bang (!) version of the 'subscriptions' method that bypasses
+    # the cache
+    def subscriptions!
+        @subscriptions = nil
+        subscriptions
     end
-    alias :reading_list :all_items
 
-    # returns the list of 'unread' items
+    # define 'list items' methods filtered by state; also, add an bang (!)
+    # version of each *_items method, that bypasses the cache
+    # and forces a new request
+    %w(broadcast
+       broadcast_friends
+       kept_unread
+       read
+       reading_list
+       starred
+       tracking_body_link_used
+       tracking_emailed
+       tracking_item_link_used
+       tracking_kept_unread).each do |prefix|
+        define_item_list_method(prefix)
+    end
+
+    # create a few method aliases to enable friendlier (or more common names
+    # (for instance, shared vs broadcast)
+    alias :reading_list            :reading_list_items
+    alias :reading_list!           :reading_list_items!
+    alias :all_items               :reading_list_items
+    alias :all_items!              :reading_list_items!
+    alias :shared_friends_items    :broadcast_friends_items
+    alias :shared_friends_items!   :broadcast_friends_items!
+    alias :followed_body_items     :tracking_body_link_used_items
+    alias :followed_body_items!    :tracking_body_link_used_items!
+    alias :emailed_items           :tracking_emailed_items
+    alias :emailed_items!          :tracking_emailed_items!
+    alias :followed_items          :tracking_item_link_used_items
+    alias :followed_items!         :tracking_item_link_used_items!
+    alias :kept_unread_ever_items  :tracking_kept_unread_items
+    alias :kept_unread_ever_items! :tracking_kept_unread_items!
+
+    # add the special the special case 'unread_items', which doesn't not
+    # have a dedicated API method; we need to fetch the entire reading list
+    # and exclude the 'read' items
     def unread_items(params = {})
-        @unread_items ||= filtered_items_list('unread', params.merge(:exclude => 'user/-/state/com.google/read'))
+        @unread_items ||= filtered_items_list('reading-list', params.merge(:exclude => 'user/-/state/com.google/read'))
     end
-
-    # returns the list of 'read' items
-    def read_items(params = {})
-        @read_items ||= filtered_items_list('read', params)
+    def unread_items!(params = {})
+        @unread_items = nil
+        unread_items(params)
     end
-
-    # returns the list of items that the user's friends have shared
-    def broadcast_friends_items(params = {})
-        @broadcast_friends_items ||= filtered_items_list('broadcast-friends', params)
-    end
-    alias :shared_friends_items :broadcast_friends_items
-
-    # returns the list of items that the user has 'starred'
-    def starred_items(params = {})
-        @starred_items ||= filtered_items_list('starred', params)
-    end
-
-    # returns the list of items that are currently marked as 'keep-unread'
-    # by the user
-    def kept_unread_items(params = {})
-        @kept_unread_items ||= filtered_items_list('kept-unread', params)
-    end
-
-    # returns the list of items which the user has ever clicked on a link
-    # inside its body
-    def tracking_body_link_items(params = {})
-        @tracking_body_link_items ||= filtered_items_list('tracking-body-link-used', params)
-    end
-    alias :followed_body_items :tracking_body_link_items
-
-    # returns the list of items which the user has ever emailed to someone
-    def tracking_emailed_items(params = {})
-        @tracking_emailed_items ||= filtered_items_list('tracking-emailed', params)
-    end
-    alias :emailed_items :tracking_emailed_items
-
-    # returns the list of items which the user has ever clicked on a link
-    # inside its description
-    def tracking_link_items(params = {})
-        @tracking_link_items ||= filtered_items_list('tracking-item-link-used', params)
-    end
-    alias :followed_items :tracking_link_items
-
-    # returns the list of items which the user has ever marked as 'keep-unread'
-    def tracking_kept_unread_items(params = {})
-        @tracking_kept_unread_items ||= filtered_items_list('tracking-kept-unread', params)
-    end
-    alias :kept_unread_ever_items :tracking_kept_unread_items
 end
 
 end; end # module Google::Reader
