@@ -109,8 +109,8 @@ class CurrentUser < User
         @subscriptions ||= begin
             resp = @client.access_token.get('/reader/api/0/subscription/list?output=json')
             raise "unable to retrieve the list of subscription for user #{user_id}" unless resp.code_type == Net::HTTPOK
-            JSON.parse(resp.body)['subscriptions'].collect do |f|
-                Google::Reader::Subscription.new(f)
+            JSON.parse(resp.body)['subscriptions'].collect do |hash|
+                Google::Reader::Subscription.new(hash.merge({:client => @client}))
             end
         end
     end
