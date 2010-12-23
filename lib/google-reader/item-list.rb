@@ -43,6 +43,7 @@ class ItemList
     def next(params = {})
         next? or return nil
         resp = @client.access_token.get(merge_query_string(@url, params.merge({:continuation => @continuation})))
+        resp.code_type == Net::HTTPOK or raise "unable to fetch 'continuation' (#{@continuation}): #{resp.inspect}"
         self.class.new(@client, resp.body)
     end
     alias :more :next

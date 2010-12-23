@@ -90,7 +90,7 @@ EOS
     # retrieve the a list of items from a given user, using a given filter
     def filtered_items_list(filter, params = {})
         resp = @client.access_token.get(ItemList.merge_query_string("/reader/api/0/stream/contents/user/#{user_id}/state/com.google/#{filter}?output=json", params))
-        raise "unable to retrieve the list of #{filter} items for user #{user_id}" unless resp.code_type == Net::HTTPOK
+        raise "unable to retrieve the list of #{filter} items for user \"#{user_id}\": #{resp.inspect}" unless resp.code_type == Net::HTTPOK
         Google::Reader::ItemList.new(@client, resp.body)
     end
 
@@ -108,7 +108,7 @@ class CurrentUser < User
     def subscriptions
         @subscriptions ||= begin
             resp = @client.access_token.get('/reader/api/0/subscription/list?output=json')
-            raise "unable to retrieve the list of subscription for user #{user_id}" unless resp.code_type == Net::HTTPOK
+            raise "unable to retrieve the list of subscription for user \"#{user_id}\": #{resp.inspect}" unless resp.code_type == Net::HTTPOK
             JSON.parse(resp.body)['subscriptions'].collect do |hash|
                 Google::Reader::Subscription.new(hash.merge({:client => @client}))
             end
@@ -126,7 +126,7 @@ class CurrentUser < User
     def tags
         @tags ||= begin
             resp = @client.access_token.get('/reader/api/0/tag/list?output=json')
-            raise "unable to retrieve the list of tags for user #{user_id}" unless resp.code_type == Net::HTTPOK
+            raise "unable to retrieve the list of tags for user \"#{user_id}\": #{resp.inspect}" unless resp.code_type == Net::HTTPOK
             JSON.parse(resp.body)['tags'].collect do |hash|
                 Google::Reader::Tag.new(hash.merge({:client => @client}))
             end

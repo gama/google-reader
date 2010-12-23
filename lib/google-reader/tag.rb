@@ -24,11 +24,12 @@ class Tag < UnderscoreMash
 
     def share(val = true)
         params = {
-            's'   => self.id,     # the tag id
+            's'   => id,          # the tag id
             'pub' => val,         # true => public/share, false => not public/unshare
             'T'   => client.token # the write-access token
         }
-        client.access_token.post('/reader/api/0/tag/edit', params)
+        resp = client.access_token.post('/reader/api/0/tag/edit', params)
+        resp.code_type == Net::HTTPOK or raise "unable to #{val ? '' : 'un'}share tag \"#{id}\": #{resp.inspect}"
     end
 
     def unshare
@@ -37,11 +38,12 @@ class Tag < UnderscoreMash
 
     def disable
         params = {
-            's'  => self.id,        # the tag id
+            's'  => id,             # the tag id
             'ac' => 'disable-tags', # action (only known value: disable-tags'
             'T'  => client.token    # the write-access token
         }
-        client.access_token.post('/reader/api/0/disable-tag', params)
+        resp = client.access_token.post('/reader/api/0/disable-tag', params)
+        resp.code_type == Net::HTTPOK or raise "unable to disable/delete tag \"#{id}\": #{resp.inspect}"
     end
     alias :delete :disable
 

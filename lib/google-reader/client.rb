@@ -15,7 +15,7 @@ module Client
     # specific token
     def token
         resp = request_proxy.get('/reader/api/0/token')
-        raise "unable to retrieve token" unless resp.code_type == Net::HTTPOK
+        resp.code_type == Net::HTTPOK or raise "unable to retrieve token: #{resp.inspect}"
         @google_reader_token = resp.body 
     end
 
@@ -38,7 +38,7 @@ module Client
     # (which includes the logged user him/herself)
     def friends
         resp = request_proxy.get('/reader/api/0/friend/list?output=json')
-        raise "unable to retrieve the list of friends" unless resp.code_type == Net::HTTPOK
+        resp.code_type == Net::HTTPOK or raise "unable to retrieve the list of friends: #{resp.inspect}"
         JSON.parse(resp.body)['friends'].collect do |friend|
             ((friend['flags'] & (1 << User::IS_ME)) > 0) ? CurrentUser.new(self, friend) : User.new(self, friend)
         end

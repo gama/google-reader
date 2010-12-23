@@ -11,70 +11,70 @@ module Google; module Reader;
 class Subscription < UnderscoreMash
     def subscribe
         params = {
-            's'  => self.id,     # the subscription id
+            's'  => id,          # the subscription id
             'ac' => 'subscribe', # the action
             'T'  => client.token # the write access token
         }
-        client.access_token.post('/reader/api/0/subscription/edit', params).code_type == Net::HTTPOK and begin
-            client.user.subscriptions << self
-            true
-        end
+        resp = client.access_token.post('/reader/api/0/subscription/edit', params)
+        resp.code_type == Net::HTTPOK or raise "unable to subscribe to \"#{id}\": #{resp.inspect}"
+        client.user.subscriptions << self
+        true
     end
 
     def unsubscribe
         params = {
-            's'  => self.id,       # the subscription id
+            's'  => id,            # the subscription id
             'ac' => 'unsubscribe', # the action
             'T'  => client.token   # the write access token
         }
-        client.access_token.post('/reader/api/0/subscription/edit', params).code_type == Net::HTTPOK and begin
-            client.user.subscriptions.reject!{|s| s.id == self.id}
-            true
-        end
+        resp = client.access_token.post('/reader/api/0/subscription/edit', params)
+        resp.code_type == Net::HTTPOK or raise "unable to unsubscribe from \"#{id}\": #{resp.inspect}"
+        client.user.subscriptions.reject!{|s| s.id == id}
+        true
     end
 
     def set_title(title)
         self_title
         params = {
-            's'  => self.id,     # the subscription id
+            's'  => id,          # the subscription id
             't'  => title,       # the subscription's title
             'ac' => 'edit',      # the action
             'T'  => client.token # the write access token
         }
-        client.access_token.post('/reader/api/0/subscription/edit', params).code_type == Net::HTTPOK and begin
-            self.title = title
-            true
-        end
+        resp = client.access_token.post('/reader/api/0/subscription/edit', params)
+        resp.code_type == Net::HTTPOK or raise "unable to set title of \"#{id}\" to \"#{title}\": #{resp.inspect}"
+        self.title = title
+        true
     end
 
     def add_label(label)
-        label = label.is_a?(Google::Reader::Tag) ? label.id : Google::Reader::Tag.build_id(label, self.client.user)
-        raise "duplicate label #{label}" if self.labels.collect(&:id).include?(label)
+        label = label.is_a?(Google::Reader::Tag) ? label.id : Google::Reader::Tag.build_id(label, client.user)
+        labels.collect(&:id).include?(label) and raise "duplicate label \"#{label}\""
         params = {
-            's'  => self.id,     # the subscription id
+            's'  => id,          # the subscription id
             'a'  => label,       # the label to be added
             'ac' => 'edit',      # the action
             'T'  => client.token # the write access token
         }
-        client.access_token.post('/reader/api/0/subscription/edit', params).code_type == Net::HTTPOK and begin
-            labels << self.class.new('id' => label, 'label' => label[(label.rindex('/label/') + 7) .. -1])
-            true
-        end
+        resp = client.access_token.post('/reader/api/0/subscription/edit', params)
+        resp.code_type == Net::HTTPOK or raise "unable to add label \"#{label}\" to \"#{id}\": #{resp.inspect}"
+        labels << self.class.new('id' => label, 'label' => label[(label.rindex('/label/') + 7) .. -1])
+        true
     end
 
     def remove_label(label)
-        label = label.is_a?(Google::Reader::Tag) ? label.id : Google::Reader::Tag.build_id(label, self.client.user)
-        raise "invalid label #{label}" unless self.labels.collect(&:id).include?(label)
+        label = label.is_a?(Google::Reader::Tag) ? label.id : Google::Reader::Tag.build_id(label, client.user)
+        labels.collect(&:id).include?(label) or raise "unknown label \"#{label}\""
         params = {
-            's'  => self.id,     # the subscription id
+            's'  => id,          # the subscription id
             'r'  => label,       # the label to be added
             'ac' => 'edit',      # the action
             'T'  => client.token # the write access token
         }
-        client.access_token.post('/reader/api/0/subscription/edit', params).code_type == Net::HTTPOK and begin
-            labels.delete_if{|l| l.id == label}
-            true
-        end
+        resp = client.access_token.post('/reader/api/0/subscription/edit', params)
+        resp.code_type == Net::HTTPOK or raise "unable to remove label \"#{label}\" from \"#{id}\": #{resp.inspect}"
+        labels.delete_if{|l| l.id == label}
+        true
     end
 
     # alias the 'categories' attribute as 'labels', which is term used
