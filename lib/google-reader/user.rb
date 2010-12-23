@@ -133,6 +133,13 @@ class CurrentUser < User
         end
     end
 
+    # define bang (!) version of the 'tags' method that bypasses
+    # the cache
+    def tags!
+        @tags = nil
+        tags
+    end
+
     # define 'list items' methods filtered by state; also, add an bang (!)
     # version of each *_items method, that bypasses the cache
     # and forces a new request
