@@ -36,6 +36,20 @@ class Tag < UnderscoreMash
         share(false)
     end
 
+    def rename(new_label)
+        label or raise "trying to rename 'unlabeled' tag: \"#{id}\""
+        new_id = new_label.match(/\/label\//) ? new_label : self.class.build_id(new_label, client.user)
+        params = {
+            's'    => id,          # current tag id
+            't'    => label,       # the current tag label
+            'dest' => new_id,      # the new tag id
+            'T'    => client.token # the write-access token
+        }
+        resp = client.access_token.post('/reader/api/0/rename-tag', params)
+        resp.code_type == Net::HTTPOK or raise "unable to rename tag \"#{id}\": #{resp.inspect}"
+        id = new_id
+    end
+
     def disable
         params = {
             's'  => id,             # the tag id
