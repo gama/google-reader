@@ -42,7 +42,7 @@ class ItemList
     # fetch next batch of items, if available
     def next(params = {})
         next? or return nil
-        resp = @client.get(merge_query_string(@url, params.merge({:continuation => @continuation})))
+        resp = @client.access_token.get(merge_query_string(@url, params.merge({:continuation => @continuation})))
         self.class.new(@client, resp.body)
     end
     alias :more :next
