@@ -80,6 +80,7 @@ class ItemList
             new_key = case key.to_s
                       when 'n',  'count', 'n_items': 'n'
                       when 'r',  'order':            'r'
+                      when 's',  'tag':              's'
                       when 'ot', 'start_time':       'ot'
                       when 'ck', 'timestamp':        'ck'
                       when 'xt', 'exclude':          'xt'

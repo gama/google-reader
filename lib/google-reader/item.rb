@@ -10,6 +10,23 @@ module Google; module Reader;
 class Item < UnderscoreMash
     attr_accessor :client
 
+    STR_ID_PREFIX = 'tag:google.com,2005:reader/item/'
+
+    def self.num_id(str)
+        str.start_with?(STR_ID_PREFIX) or raise "invalid string id: #{str}"
+        num = "0x#{str[-16..-1]}".hex
+        num[63] == 1 and num = (num - 0xFFFFFFFFFFFFFFFF - 1)
+        num
+    end
+
+    def self.str_id(num)
+        STR_ID_PREFIX + ('%016x' % num)[-16..-1]
+    end
+
+    def item_ref_id
+        self.class.num_id(self.id)
+    end
+
     def mark_as_read
         add_tag("user/#{client.user.user_id}/#{Tag::Read}")
     end
