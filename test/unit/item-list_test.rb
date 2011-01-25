@@ -1,3 +1,8 @@
+############################################################
+# Copyright (c) 2010, iGenesis Ltda.                       #
+# Author: Gustavo Machado C. Gama <gustavo.gama@gmail.com> #
+############################################################
+
 $LOAD_PATH << File.expand_path('../../../lib', __FILE__)
 $LOAD_PATH << File.expand_path('..', __FILE__)
 require 'test/unit'
