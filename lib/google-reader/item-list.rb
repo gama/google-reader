@@ -3,32 +3,31 @@
 # Author: Gustavo Machado C. Gama <gustavo.gama@gmail.com> #
 ############################################################
 
+require 'forwardable'
 require 'json'
 require 'google-reader/item'
 
 module Google; module Reader;
 
 class ItemList
-    attr_reader :items
+    extend Forwardable      # forward a few select methods to the embedded array object
+    def_delegators :@items, :size, :<<, :[], :[]=, :first, :last, :shift, :pop, :unshift, :push, :each, :empty?, :select, :collect, :reverse, :sort
+
+    attr_accessor :items
 
     def initialize(cli, json_str = nil)
         @client = cli
+        @items  = Array.new
         if json_str
             json = JSON.parse(json_str)
-            %w(author title updated direction continuation).each do |key|
-                instance_variable_set(('@'+key).to_sym, json[key])
+            %w(id author description title updated direction continuation).each do |key|
+                instance_variable_set(('@'+key).to_sym, json[key]) if json[key]
             end
-            @url   = json['self'].first['href']
-            @items = json['items'].collect do |item_mash|
+            @url = json['self'].first['href']
+            @items.replace(json['items'].collect do |item_mash|
                 Google::Reader::Item.new(item_mash).tap{|i| i.client = @client}
-            end
-        else
-            @items = Array.new
+            end)
         end
-    end
-
-    def size
-        @items.size
     end
 
     # check whether there are more items available (using the 'continuation'
@@ -50,7 +49,7 @@ class ItemList
 
     # fetch all available items
     def all
-        end_time = (Time.now - 30.days).to_i
+        end_time  = (Time.now - (30 * 60 * 60 * 24)).to_i
         all_items = Array.new
         cur_items = self
         begin
@@ -64,10 +63,10 @@ class ItemList
         url = URI.parse(url) if url.is_a?(String)
         url.is_a?(URI) or return nil
 
-        query_hash = url.query.split(/\&/).collect{|i|i.split(/=/)}
+        query_hash = (url.query || '').split(/\&/).collect{|i|i.split(/=/)}
 
         query_hash = convert_key_aliases(query_hash).merge(convert_key_aliases(new_params))
-        url.query = query_hash.collect{|k, v| "#{k}=#{v}"}.join('&')
+        url.query = query_hash.sort.collect{|k, v| "#{k}=#{v}"}.join('&')
         url.to_s
     end
     def merge_query_string(*args); self.class.merge_query_string(*args); end
